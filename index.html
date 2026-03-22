@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Reliquum — BSM Physics Anomaly Detection</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet"/>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --ink:     #0e0e0e;
+    --paper:   #f5f2eb;
+    --dim:     #6b6860;
+    --rule:    #d4cfc4;
+    --accent:  #1a3a5c;
+    --accent2: #8b3a2a;
+    --mono:    'DM Mono', monospace;
+    --serif:   'EB Garamond', Georgia, serif;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--serif);
+    font-size: 18px;
+    line-height: 1.75;
+    overflow-x: hidden;
+  }
+
+  /* ── noise texture overlay ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 999;
+    opacity: 0.4;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1.2rem 3rem;
+    border-bottom: 1px solid var(--rule);
+    background: rgba(245,242,235,0.92);
+    backdrop-filter: blur(6px);
+    z-index: 100;
+  }
+  .nav-logo {
+    font-family: var(--mono);
+    font-size: 13px;
+    letter-spacing: 0.18em;
+    color: var(--accent);
+    text-transform: uppercase;
+  }
+  .nav-links { display: flex; gap: 2.5rem; list-style: none; }
+  .nav-links a {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--dim);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+  .nav-links a:hover { color: var(--ink); }
+
+  /* ── HERO ── */
+  #hero {
+    min-height: 100vh;
+    display: flex; flex-direction: column; justify-content: flex-end;
+    padding: 0 3rem 5rem;
+    border-bottom: 1px solid var(--rule);
+    position: relative;
+  }
+
+  .hero-ornament {
+    position: absolute;
+    top: 50%;
+    right: 3rem;
+    transform: translateY(-50%);
+    width: 340px;
+    height: 340px;
+    opacity: 0.07;
+  }
+
+  .hero-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent2);
+    margin-bottom: 1.6rem;
+    opacity: 0;
+    animation: fadeUp 0.8s 0.2s forwards;
+  }
+
+  h1 {
+    font-size: clamp(4rem, 9vw, 8rem);
+    font-weight: 400;
+    line-height: 0.95;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    margin-bottom: 2rem;
+    opacity: 0;
+    animation: fadeUp 0.9s 0.35s forwards;
+  }
+
+  h1 em {
+    font-style: italic;
+    color: var(--accent);
+  }
+
+  .hero-sub {
+    max-width: 560px;
+    font-size: 1.15rem;
+    color: var(--dim);
+    line-height: 1.7;
+    margin-bottom: 3rem;
+    opacity: 0;
+    animation: fadeUp 0.9s 0.5s forwards;
+  }
+
+  .hero-cta {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--paper);
+    background: var(--accent);
+    padding: 0.85rem 2.2rem;
+    text-decoration: none;
+    border: 1px solid var(--accent);
+    transition: background 0.2s, color 0.2s;
+    opacity: 0;
+    animation: fadeUp 0.9s 0.65s forwards;
+  }
+  .hero-cta:hover { background: transparent; color: var(--accent); }
+
+  .hero-rule {
+    position: absolute;
+    left: 3rem; top: 50%;
+    width: 1px; height: 120px;
+    background: var(--rule);
+    transform: translateY(-50%);
+    opacity: 0;
+    animation: fadeIn 1.2s 0.8s forwards;
+  }
+
+  /* ── SECTIONS ── */
+  section {
+    padding: 7rem 3rem;
+    border-bottom: 1px solid var(--rule);
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  .section-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--accent2);
+    margin-bottom: 3rem;
+    display: flex; align-items: center; gap: 1rem;
+  }
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--rule);
+  }
+
+  h2 {
+    font-size: clamp(2rem, 4vw, 3rem);
+    font-weight: 400;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    margin-bottom: 1.8rem;
+  }
+
+  h2 em { font-style: italic; color: var(--accent); }
+
+  p { color: var(--dim); margin-bottom: 1.2rem; max-width: 680px; }
+
+  /* ── PROBLEM ── */
+  .problem-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 2px;
+    margin-top: 3.5rem;
+  }
+  .problem-card {
+    background: rgba(26,58,92,0.04);
+    border: 1px solid var(--rule);
+    padding: 2.2rem 1.8rem;
+  }
+  .problem-card-num {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    color: var(--accent2);
+    margin-bottom: 0.9rem;
+  }
+  .problem-card h3 {
+    font-size: 1.25rem;
+    font-weight: 400;
+    margin-bottom: 0.8rem;
+    line-height: 1.3;
+  }
+  .problem-card p {
+    font-size: 0.92rem;
+    line-height: 1.7;
+    max-width: none;
+  }
+
+  /* ── HOW IT WORKS ── */
+  .pipeline {
+    margin-top: 3.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .pipeline-step {
+    display: grid;
+    grid-template-columns: 80px 1fr;
+    gap: 0 2rem;
+    padding: 2rem 0;
+    border-top: 1px solid var(--rule);
+    align-items: start;
+  }
+  .pipeline-step:last-child { border-bottom: 1px solid var(--rule); }
+  .step-num {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--rule);
+    letter-spacing: 0.1em;
+    padding-top: 0.25rem;
+  }
+  .step-body h4 {
+    font-size: 1.1rem;
+    font-weight: 500;
+    margin-bottom: 0.4rem;
+  }
+  .step-body p { font-size: 0.95rem; margin-bottom: 0; max-width: 600px; }
+  .step-tag {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    padding: 0.2rem 0.55rem;
+    margin-bottom: 0.6rem;
+  }
+
+  /* ── TECH STACK ── */
+  .stack-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 2px;
+    margin-top: 3.5rem;
+  }
+  .stack-col { border: 1px solid var(--rule); padding: 1.8rem 1.5rem; }
+  .stack-col-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent2);
+    margin-bottom: 1.2rem;
+    padding-bottom: 0.8rem;
+    border-bottom: 1px solid var(--rule);
+  }
+  .stack-item {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--dim);
+    padding: 0.35rem 0;
+    border-bottom: 1px solid rgba(212,207,196,0.4);
+    letter-spacing: 0.04em;
+  }
+  .stack-item:last-child { border-bottom: none; }
+
+  /* ── CONTACT ── */
+  #contact { border-bottom: none; }
+  .contact-inner {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6rem;
+    align-items: start;
+  }
+  .contact-form { display: flex; flex-direction: column; gap: 1.2rem; }
+  .form-field { display: flex; flex-direction: column; gap: 0.4rem; }
+  .form-field label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--dim);
+  }
+  .form-field input,
+  .form-field textarea,
+  .form-field select {
+    background: transparent;
+    border: 1px solid var(--rule);
+    padding: 0.7rem 1rem;
+    font-family: var(--serif);
+    font-size: 16px;
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.2s;
+    resize: vertical;
+  }
+  .form-field input:focus,
+  .form-field textarea:focus,
+  .form-field select:focus { border-color: var(--accent); }
+  .form-submit {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--paper);
+    background: var(--accent);
+    border: 1px solid var(--accent);
+    padding: 0.9rem 2.2rem;
+    cursor: pointer;
+    align-self: flex-start;
+    transition: background 0.2s, color 0.2s;
+  }
+  .form-submit:hover { background: transparent; color: var(--accent); }
+
+  /* ── FOOTER ── */
+  footer {
+    padding: 2.5rem 3rem;
+    border-top: 1px solid var(--rule);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  footer p {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    color: var(--rule);
+    margin: 0;
+    max-width: none;
+  }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  .reveal {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.7s ease, transform 0.7s ease;
+  }
+  .reveal.visible { opacity: 1; transform: translateY(0); }
+
+  @media (max-width: 900px) {
+    nav { padding: 1rem 1.5rem; }
+    .nav-links { display: none; }
+    #hero { padding: 0 1.5rem 4rem; }
+    section { padding: 5rem 1.5rem; }
+    .problem-grid { grid-template-columns: 1fr; }
+    .stack-grid { grid-template-columns: 1fr 1fr; }
+    .contact-inner { grid-template-columns: 1fr; gap: 3rem; }
+    footer { flex-direction: column; gap: 0.5rem; text-align: center; }
+    .hero-ornament { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <span class="nav-logo">Reliquum</span>
+  <ul class="nav-links">
+    <li><a href="#problem">Problem</a></li>
+    <li><a href="#how">Method</a></li>
+    <li><a href="#stack">Stack</a></li>
+    <li><a href="#contact">Contact</a></li>
+  </ul>
+</nav>
+
+<!-- ── HERO ── -->
+<section id="hero">
+  <div class="hero-rule"></div>
+
+  <svg class="hero-ornament" viewBox="0 0 340 340" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="170" cy="170" r="160" stroke="#1a3a5c" stroke-width="0.5"/>
+    <circle cx="170" cy="170" r="120" stroke="#1a3a5c" stroke-width="0.5"/>
+    <circle cx="170" cy="170" r="80" stroke="#1a3a5c" stroke-width="0.5"/>
+    <circle cx="170" cy="170" r="40" stroke="#1a3a5c" stroke-width="0.5"/>
+    <line x1="10" y1="170" x2="330" y2="170" stroke="#1a3a5c" stroke-width="0.5"/>
+    <line x1="170" y1="10" x2="170" y2="330" stroke="#1a3a5c" stroke-width="0.5"/>
+    <line x1="57" y1="57" x2="283" y2="283" stroke="#1a3a5c" stroke-width="0.5"/>
+    <line x1="283" y1="57" x2="57" y2="283" stroke="#1a3a5c" stroke-width="0.5"/>
+    <circle cx="170" cy="170" r="4" fill="#1a3a5c"/>
+    <circle cx="170" cy="10"  r="2" fill="#8b3a2a"/>
+    <circle cx="170" cy="330" r="2" fill="#8b3a2a"/>
+    <circle cx="10"  cy="170" r="2" fill="#8b3a2a"/>
+    <circle cx="330" cy="170" r="2" fill="#8b3a2a"/>
+  </svg>
+
+  <p class="hero-label">Astrophysics &nbsp;·&nbsp; Machine Learning &nbsp;·&nbsp; BSM Physics</p>
+  <h1>What the<br/>universe<br/><em>left behind</em></h1>
+  <p class="hero-sub">
+    Reliquum is an anomaly detection engine for Beyond Standard Model physics — hunting dark matter interactions, magnetic monopole signatures, and hierarchy-problem probes buried inside petabytes of detector and collider data.
+  </p>
+  <a href="#contact" class="hero-cta">Request Early Access</a>
+</section>
+
+<!-- ── PROBLEM ── -->
+<section id="problem">
+  <p class="section-label reveal">The problem</p>
+  <h2 class="reveal">Physics pipelines <em>only find<br/>what you already expect</em></h2>
+  <p class="reveal">
+    Current experimental analysis relies on hard-coded, cut-based filters — designed by physicists who must pre-specify what they are looking for. Novel phenomena, by definition, cannot be found this way. Reliquum operates without prior signal assumptions.
+  </p>
+
+  <div class="problem-grid">
+    <div class="problem-card reveal">
+      <p class="problem-card-num">01 &mdash; Dark Matter</p>
+      <h3>Rare nuclear recoils submerged in background</h3>
+      <p>WIMP signals — if they exist — amount to a handful of events per year inside tonnes of liquid xenon. Statistical separation from electron-recoil backgrounds requires a fundamentally different approach than signal-box counting.</p>
+    </div>
+    <div class="problem-card reveal">
+      <p class="problem-card-num">02 &mdash; Monopoles</p>
+      <h3>Topologically distinct tracks, no dedicated classifier</h3>
+      <p>Magnetic monopoles leave slow, highly-ionising signatures unlike any Standard Model particle. No production-grade neural classifier exists that generalises across energy ranges without assuming a specific monopole mass.</p>
+    </div>
+    <div class="problem-card reveal">
+      <p class="problem-card-num">03 &mdash; Hierarchy Problem</p>
+      <h3>BSM resonances hidden in dijet and MET spectra</h3>
+      <p>SUSY particles, composite Higgs states, and Kaluza-Klein excitations each leave distinct but subtle LHC signatures. Model-dependent searches miss the signatures of models not yet proposed.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── HOW IT WORKS ── -->
+<section id="how">
+  <p class="section-label reveal">Method</p>
+  <h2 class="reveal">Simulation-based inference<br/><em>meets ensemble anomaly scoring</em></h2>
+  <p class="reveal">
+    Reliquum trains exclusively on Standard Model Monte Carlo and real background data. Any event statistically inconsistent with that learned distribution is flagged — without prior knowledge of what the new physics looks like.
+  </p>
+
+  <div class="pipeline">
+    <div class="pipeline-step reveal">
+      <span class="step-num">01</span>
+      <div class="step-body">
+        <span class="step-tag">Ingestion</span>
+        <h4>Multi-source data ingestion</h4>
+        <p>ROOT and HDF5 event files from XENONnT, LZ, IceCube, MoEDAL, and CERN Open Data are parsed via <code>uproot</code> and normalised into a unified 18-dimensional event tensor schema.</p>
+      </div>
+    </div>
+    <div class="pipeline-step reveal">
+      <span class="step-num">02</span>
+      <div class="step-body">
+        <span class="step-tag">Simulation</span>
+        <h4>GEANT4 background modelling</h4>
+        <p>A GEANT4/NEST simulation engine generates high-fidelity Standard Model background events. These form the sole training distribution for all downstream models — no signal templates required.</p>
+      </div>
+    </div>
+    <div class="pipeline-step reveal">
+      <span class="step-num">03</span>
+      <div class="step-body">
+        <span class="step-tag">Modelling</span>
+        <h4>Three-branch ensemble</h4>
+        <p>A Variational Autoencoder scores by reconstruction loss. A Normalising Flow (RQS architecture) scores by negative log-likelihood. A Graph Neural Network encodes detector hit topology for track-based signals. All three outputs feed a trained meta-classifier.</p>
+      </div>
+    </div>
+    <div class="pipeline-step reveal">
+      <span class="step-num">04</span>
+      <div class="step-body">
+        <span class="step-tag">Inference</span>
+        <h4>Posterior estimation via TMNRE</h4>
+        <p>For confirmed anomalies, <code>swyft</code> (Truncated Marginal Neural Ratio Estimation) produces a posterior distribution over BSM parameters — WIMP mass, cross-section, monopole magnetic charge — ready for publication.</p>
+      </div>
+    </div>
+    <div class="pipeline-step reveal">
+      <span class="step-num">05</span>
+      <div class="step-body">
+        <span class="step-tag">Explainability</span>
+        <h4>SHAP feature attribution</h4>
+        <p>Every flagged event receives a SHAP decomposition across all input features, identifying which physical observables drive the anomaly score — bridging the gap between neural classifiers and physicist intuition.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── TECH STACK ── -->
+<section id="stack">
+  <p class="section-label reveal">Technology</p>
+  <h2 class="reveal">Built on the <em>frontier</em><br/>of scientific computing</h2>
+  <p class="reveal">Every component selected for reproducibility, openness, and compatibility with existing HEP analysis workflows.</p>
+
+  <div class="stack-grid reveal">
+    <div class="stack-col">
+      <p class="stack-col-label">Physics / Data</p>
+      <p class="stack-item">uproot + awkward-array</p>
+      <p class="stack-item">GEANT4 / NEST</p>
+      <p class="stack-item">HDF5 + h5py</p>
+      <p class="stack-item">CERN Open Data</p>
+      <p class="stack-item">Zenodo datasets</p>
+    </div>
+    <div class="stack-col">
+      <p class="stack-col-label">ML Models</p>
+      <p class="stack-item">PyTorch + JAX</p>
+      <p class="stack-item">PyTorch Geometric</p>
+      <p class="stack-item">zuko (norm. flows)</p>
+      <p class="stack-item">swyft (TMNRE)</p>
+      <p class="stack-item">SHAP</p>
+    </div>
+    <div class="stack-col">
+      <p class="stack-col-label">Backend / Infra</p>
+      <p class="stack-item">FastAPI</p>
+      <p class="stack-item">Celery + Redis</p>
+      <p class="stack-item">PostgreSQL</p>
+      <p class="stack-item">MinIO / S3</p>
+      <p class="stack-item">Docker + Kubernetes</p>
+    </div>
+    <div class="stack-col">
+      <p class="stack-col-label">Frontend</p>
+      <p class="stack-item">React + Vite</p>
+      <p class="stack-item">Three.js (3D events)</p>
+      <p class="stack-item">D3.js (timelines)</p>
+      <p class="stack-item">Plotly (posteriors)</p>
+      <p class="stack-item">WebSockets</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── CONTACT ── -->
+<section id="contact">
+  <p class="section-label reveal">Contact</p>
+  <div class="contact-inner">
+    <div class="reveal">
+      <h2>Collaborate<br/>or <em>request access</em></h2>
+      <p>Reliquum is currently in active development. We welcome collaboration with experimental physics groups, HEP data teams, and ML researchers working at the BSM frontier.</p>
+      <p style="margin-top:2rem; font-family: var(--mono); font-size:11px; letter-spacing:0.14em; color:var(--dim);">
+        PREPRINT &nbsp;·&nbsp; FORTHCOMING<br/>
+        GITHUB &nbsp;·&nbsp; OPEN SOURCE Q3 2025
+      </p>
+    </div>
+    <div class="reveal">
+      <form class="contact-form" onsubmit="handleSubmit(event)">
+        <div class="form-field">
+          <label>Name</label>
+          <input type="text" placeholder="Dr. Jane Smith" required/>
+        </div>
+        <div class="form-field">
+          <label>Institutional Email</label>
+          <input type="email" placeholder="j.smith@cern.ch" required/>
+        </div>
+        <div class="form-field">
+          <label>Affiliation</label>
+          <input type="text" placeholder="CERN / MIT / IceCube Collaboration…"/>
+        </div>
+        <div class="form-field">
+          <label>Area of interest</label>
+          <select>
+            <option>Dark matter detection</option>
+            <option>Magnetic monopole search</option>
+            <option>Hierarchy problem / LHC</option>
+            <option>General collaboration</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label>Message</label>
+          <textarea rows="4" placeholder="Describe your experiment or collaboration interest…"></textarea>
+        </div>
+        <button type="submit" class="form-submit">Submit Enquiry</button>
+      </form>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p>&copy; 2025 Reliquum &nbsp;·&nbsp; BSM Anomaly Detection Research</p>
+  <p>Built for the frontier &nbsp;·&nbsp; All experimental data sourced from public repositories</p>
+</footer>
+
+<script>
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((e, i) => {
+      if (e.isIntersecting) {
+        setTimeout(() => e.target.classList.add('visible'), i * 80);
+        observer.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.12 });
+
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+  function handleSubmit(e) {
+    e.preventDefault();
+    const btn = e.target.querySelector('.form-submit');
+    btn.textContent = 'Enquiry Received';
+    btn.style.background = '#2a5c3a';
+    btn.style.borderColor = '#2a5c3a';
+    btn.disabled = true;
+  }
+</script>
+</body>
+</html>
